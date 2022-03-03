@@ -1,42 +1,79 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Form from "./components/Form";
 import PhoneBook from "./components/PhoneBook";
 import Search from "./components/Search";
+import axios from "axios";
+import { createContact, updateUser } from "./services/phonebook";
+import "./index.css";
 
 const App = () => {
-  const [persons, setPersons] = useState([
-    { name: "Arto Hellas", number: "040-123456", id: 1 },
-    { name: "Ada Lovelace", number: "39-44-5323523", id: 2 },
-    { name: "Dan Abramov", number: "12-43-234345", id: 3 },
-    { name: "Mary Poppendieck", number: "39-23-6423122", id: 4 },
-  ]);
-  const [backup, setBackup] = useState([
-    { name: "Arto Hellas", number: "040-123456", id: 1 },
-    { name: "Ada Lovelace", number: "39-44-5323523", id: 2 },
-    { name: "Dan Abramov", number: "12-43-234345", id: 3 },
-    { name: "Mary Poppendieck", number: "39-23-6423122", id: 4 },
-  ]);
+  const [persons, setPersons] = useState();
+  const [backup, setBackup] = useState();
   const [newName, setNewName] = useState("");
   const [number, setNumber] = useState("");
   const [searchValue, setSearchValue] = useState("");
+  const [indicator, setIndicator] = useState("");
+  const [classname, setClassname] = useState("");
 
   const handleClick = (e) => {
     e.preventDefault();
-    setPersons([...persons, { name: newName, number, id: new Date() }]);
-    setBackup([...persons, { name: newName, number, id: new Date() }]);
+
+    const targetUser = persons.find(
+      (person) => person.name.toLowerCase() === newName.toLowerCase()
+    );
+
+    if (targetUser) {
+      if (
+        window.confirm(
+          `${targetUser.name} is already added to phonebook replace the old number with a new one?`
+        )
+      ) {
+        updateUser(`http://localhost:3001/persons/${targetUser.id}`, {
+          ...targetUser,
+          number,
+        })
+          .then((response) => {
+            let newUsers = persons.map((user) =>
+              user.name.toLowerCase() === targetUser.name.toLowerCase()
+                ? { ...targetUser, number }
+                : user
+            );
+            setPersons(newUsers);
+            setBackup(newUsers);
+            setIndicator(`${targetUser.name}'s number is updated successfully`);
+            setTimeout(() => setIndicator(""), 3000);
+            setClassname("success");
+            setNewName("");
+            setNumber("");
+            // solution number 2 (works but pushes modified item to the end of the array)
+            // let newUsers = persons.filter(user => user.name !== targetUser.name)
+            // setPersons([...newUsers, { ...response.data }]);
+            // setBackup([...newUsers, { ...response.data }]);
+          })
+          .catch((err) => {
+            setIndicator(
+              `Information of ${targetUser.name} has already been removed from the server`
+            );
+            setClassname("error");
+            setTimeout(() => setIndicator('') , 3000)
+          });
+      }
+      return;
+    }
+
+    createContact(newName, number).then((response) => {
+      setPersons([...persons, response.data]);
+      setBackup([...persons, response.data]);
+    });
+    setIndicator("User created successfully");
+    setClassname("success");
+    setTimeout(() => setIndicator(""), 3000);
+
     setNewName("");
     setNumber("");
   };
 
   const handleNameChange = (e) => {
-    const targetPerson = persons.find(
-      (person) => person.name === e.target.value
-    );
-
-    if (targetPerson) {
-      alert(`${targetPerson.name} is already added to the phonebook`);
-      return;
-    }
     setNewName(e.target.value);
   };
 
@@ -57,6 +94,13 @@ const App = () => {
     setPersons(targetSearch);
   };
 
+  useEffect(() => {
+    axios.get("http://localhost:3001/persons").then((response) => {
+      setPersons(response.data);
+      setBackup(response.data);
+    });
+  }, []);
+
   const formProps = {
     handleClick,
     newName,
@@ -68,11 +112,18 @@ const App = () => {
   return (
     <div>
       <h2>Phonebook</h2>
+      {indicator && <p className={classname}>{indicator}</p>}
       <Search searchValue={searchValue} handleSearch={handleSearch} />
       <h2>Add a new</h2>
       <Form {...formProps} />
       <h2>Numbers</h2>
-      <PhoneBook persons={persons} />
+      <PhoneBook
+        setIndicator={setIndicator}
+        setClassname={setClassname}
+        setPersons={setPersons}
+        setBackup={setBackup}
+        persons={persons}
+      />
     </div>
   );
 };
