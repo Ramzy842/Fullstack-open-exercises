@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const createContact = (newName, number) => {
-  return axios.post("http://localhost:3001/persons", {
+  return axios.post("/api/persons", {
     name: newName,
     number,
   })

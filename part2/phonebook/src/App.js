@@ -14,6 +14,7 @@ const App = () => {
   const [searchValue, setSearchValue] = useState("");
   const [indicator, setIndicator] = useState("");
   const [classname, setClassname] = useState("");
+  const [loading, setLoading] = useState(true);
 
   const handleClick = (e) => {
     e.preventDefault();
@@ -28,14 +29,14 @@ const App = () => {
           `${targetUser.name} is already added to phonebook replace the old number with a new one?`
         )
       ) {
-        updateUser(`http://localhost:3001/persons/${targetUser.id}`, {
+        updateUser(`/api/persons/${targetUser.id}`, {
           ...targetUser,
           number,
         })
           .then((response) => {
             let newUsers = persons.map((user) =>
               user.name.toLowerCase() === targetUser.name.toLowerCase()
-                ? { ...targetUser, number }
+                ? response.data
                 : user
             );
             setPersons(newUsers);
@@ -51,23 +52,27 @@ const App = () => {
             // setBackup([...newUsers, { ...response.data }]);
           })
           .catch((err) => {
-            setIndicator(
-              `Information of ${targetUser.name} has already been removed from the server`
-            );
+            setIndicator(err.response.data.error);
             setClassname("error");
-            setTimeout(() => setIndicator('') , 3000)
+            setTimeout(() => setIndicator(""), 7000);
           });
       }
       return;
     }
 
-    createContact(newName, number).then((response) => {
-      setPersons([...persons, response.data]);
-      setBackup([...persons, response.data]);
-    });
-    setIndicator("User created successfully");
-    setClassname("success");
-    setTimeout(() => setIndicator(""), 3000);
+    createContact(newName, number)
+      .then((response) => {
+        setPersons(response.data);
+        setBackup(response.data);
+        setIndicator("User created successfully");
+        setClassname("success");
+        setTimeout(() => setIndicator(""), 3000);
+      })
+      .catch((error) => {
+        setIndicator(error.response.data.error);
+        setClassname("error");
+        setTimeout(() => setIndicator(""), 7000);
+      });
 
     setNewName("");
     setNumber("");
@@ -87,19 +92,22 @@ const App = () => {
       person.name.toLowerCase().includes(e.target.value.toLowerCase())
     );
 
-    if (!searchValue) {
-      setPersons(backup);
-      return;
-    }
     setPersons(targetSearch);
   };
 
   useEffect(() => {
-    axios.get("http://localhost:3001/persons").then((response) => {
+    axios.get("/api/persons").then((response) => {
       setPersons(response.data);
       setBackup(response.data);
+      setLoading(false);
     });
   }, []);
+
+  useEffect(() => {
+    if (!searchValue) {
+      setPersons(backup);
+    }
+  }, [searchValue, backup]);
 
   const formProps = {
     handleClick,
@@ -117,13 +125,17 @@ const App = () => {
       <h2>Add a new</h2>
       <Form {...formProps} />
       <h2>Numbers</h2>
-      <PhoneBook
-        setIndicator={setIndicator}
-        setClassname={setClassname}
-        setPersons={setPersons}
-        setBackup={setBackup}
-        persons={persons}
-      />
+      {loading ? (
+        <h2>LOADING...</h2>
+      ) : (
+        <PhoneBook
+          setIndicator={setIndicator}
+          setClassname={setClassname}
+          setPersons={setPersons}
+          setBackup={setBackup}
+          persons={persons}
+        />
+      )}
     </div>
   );
 };

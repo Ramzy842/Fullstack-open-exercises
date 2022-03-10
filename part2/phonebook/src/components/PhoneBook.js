@@ -1,6 +1,12 @@
 import { deleteContact } from "../services/phonebook";
-
-const PhoneBook = ({ persons, setPersons, setBackup, setIndicator, setClassname }) => {
+import axios from "axios";
+const PhoneBook = ({
+  persons,
+  setPersons,
+  setBackup,
+  setIndicator,
+  setClassname,
+}) => {
   return (
     <table>
       <tbody>
@@ -13,17 +19,17 @@ const PhoneBook = ({ persons, setPersons, setBackup, setIndicator, setClassname 
                 <button
                   onClick={() => {
                     if (window.confirm(`delete ${person.name}?`)) {
-                      deleteContact(
-                        `http://localhost:3001/persons/${person.id}`
-                      ).then((res) => {
-                        const newPeople = persons.filter(
+                      deleteContact(`/api/persons/${person.id}`).then((res) => {
+                        /* const newPeople = persons.filter(
                           (singlePerson) => singlePerson.id !== person.id
-                        );
-                        setPersons(newPeople);
-                        setBackup(newPeople);
+                        ); */
+                        setPersons(res.data.data);
+                        setBackup(res.data.data);
+
                         setIndicator("User deleted successfully");
                         setClassname("success");
-                        setTimeout(() => setIndicator(""), 3000)
+                        setTimeout(() => setIndicator(""), 3000);
+                        
                       });
                     }
                   }}
